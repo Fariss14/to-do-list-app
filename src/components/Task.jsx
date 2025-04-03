@@ -114,22 +114,24 @@ function Task({ task, categories, onComplete, onDelete, onEdit }) {
                 </span>
               )}
             </h3>
-            <p>
+            <div className="task-metadata">
               <span className="category-badge">{task.category}</span>
-              {task.date && (
-                <span className={`date-badge ${isOverdue ? "overdue" : ""}`}>
-                  <Calendar size={14} className="badge-icon" />
-                  {formatDate(task.date)}
-                </span>
-              )}
-              {task.time && (
-                <span className={`time-badge ${isOverdue ? "overdue" : ""}`}>
-                  <Clock size={14} className="badge-icon" />
-                  {task.time}
-                </span>
-              )}
-              <span className="status-badge">{isOverdue ? "Overdue" : "Active"}</span>
-            </p>
+
+              <div className="datetime-badges">
+                {task.date && (
+                  <span className={`date-badge ${isOverdue ? "overdue" : ""}`}>
+                    <Calendar size={14} className="badge-icon" />
+                    {formatDate(task.date)}
+                  </span>
+                )}
+                {task.time && (
+                  <span className={`time-badge ${isOverdue ? "overdue" : ""}`}>
+                    <Clock size={14} className="badge-icon" />
+                    {task.time}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           <div className="task-actions">
             <button className="btn btn-edit" onClick={() => setIsEditing(true)} title="Edit task">
