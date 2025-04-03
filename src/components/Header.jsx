@@ -1,13 +1,20 @@
-import { Link } from "react-router-dom"
-import { CheckSquare, Trash2 } from "lucide-react"
-
 function Header() {
+
+  const getPageTitle = () => {
+    const path = window.location.pathname
+
+    if (path.includes("/completed")) {
+      return "Completed Tasks"
+    } else if (path.includes("/deleted")) {
+      return "Deleted Tasks"
+    } else {
+      return "My Tasks"
+    }
+  }
+
   return (
-    <header className="header">
-      <h1>FRANZ & NAIF's</h1>
-      <h2>TO - DO - LIST APP</h2>
-      <nav className="nav">
-      </nav>
+    <header className="page-header">
+      <h1>{getPageTitle()}</h1>
     </header>
   )
 }
