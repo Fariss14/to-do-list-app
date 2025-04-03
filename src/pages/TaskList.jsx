@@ -2,8 +2,6 @@ import { useState, useEffect } from "react"
 import AddTask from "../components/AddTask"
 import Task from "../components/Task"
 import TaskFilter from "../components/TaskFilter"
-import { CheckSquare, Trash2 } from "lucide-react"
-import { Link } from "react-router-dom"
 
 function TaskList({ tasks, categories, onAddTask, onAddCategory, onComplete, onDelete, onEdit }) {
   const [filteredTasks, setFilteredTasks] = useState(tasks)
@@ -59,7 +57,6 @@ function TaskList({ tasks, categories, onAddTask, onAddCategory, onComplete, onD
         else if (filter.month) {
           return taskMonth === filter.month
         }
-
         else if (filter.year) {
           return taskYear === filter.year
         }
@@ -76,46 +73,36 @@ function TaskList({ tasks, categories, onAddTask, onAddCategory, onComplete, onD
   }
 
   return (
-    <div className="container">
-      <div className="task-container">
+    <div className="page-container">
+      <div className="section-header">
         <h2>My To Do List</h2>
+      </div>
 
-        <div className="add-task-container">
-          <AddTask categories={categories} onAddTask={onAddTask} onAddCategory={onAddCategory} />
-        </div>
+      <div className="add-task-container">
+        <AddTask categories={categories} onAddTask={onAddTask} onAddCategory={onAddCategory} />
+      </div>
 
-        <div className="tasks-list-container">
-          <div className="tasks-list-header">
-            <TaskFilter categories={categories} onFilterChange={handleFilterChange} />
-          </div>
+      <div className="filter-section">
+        <h3>To Do Tasks</h3>
+        <TaskFilter categories={categories} onFilterChange={handleFilterChange} />
+      </div>
 
-          <div className="tasks-list">
-            {filteredTasks.length > 0 ? (
-              filteredTasks.map((task) => (
-                <Task
-                  key={task.id}
-                  task={task}
-                  categories={categories}
-                  onComplete={onComplete}
-                  onDelete={onDelete}
-                  onEdit={onEdit}
-                />
-              ))
-            ) : (
-              <p className="empty-message">No tasks to show</p>
-            )}
-          </div>
-        </div>
-
-        <div className="view-links">
-          <Link to="/completed" className="view-link">
-            <CheckSquare size={20} />
-            <span>View Completed</span>
-          </Link>
-          <Link to="/deleted" className="view-link">
-            <Trash2 size={20} />
-            <span>View Deleted</span>
-          </Link>
+      <div className="tasks-list-container">
+        <div className="tasks-list">
+          {filteredTasks.length > 0 ? (
+            filteredTasks.map((task) => (
+              <Task
+                key={task.id}
+                task={task}
+                categories={categories}
+                onComplete={onComplete}
+                onDelete={onDelete}
+                onEdit={onEdit}
+              />
+            ))
+          ) : (
+            <p className="empty-message">No tasks to show</p>
+          )}
         </div>
       </div>
     </div>
