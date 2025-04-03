@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Edit2, Save, X, Calendar, Clock } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Edit2, Calendar, Clock, AlertTriangle } from "lucide-react"
 
 function Task({ task, categories, onComplete, onDelete, onEdit }) {
   const [isEditing, setIsEditing] = useState(false)
@@ -7,6 +7,25 @@ function Task({ task, categories, onComplete, onDelete, onEdit }) {
   const [editedCategory, setEditedCategory] = useState(task.category)
   const [editedDate, setEditedDate] = useState(task.date || "")
   const [editedTime, setEditedTime] = useState(task.time || "")
+  const [isOverdue, setIsOverdue] = useState(false)
+
+  useEffect(() => {
+    if (task.date) {
+      const now = new Date()
+      const taskDateTime = new Date(task.date)
+
+      if (task.time) {
+        const [hours, minutes] = task.time.split(":").map(Number)
+        taskDateTime.setHours(hours, minutes)
+      } else {
+        taskDateTime.setHours(23, 59, 59)
+      }
+
+      setIsOverdue(taskDateTime < now)
+    } else {
+      setIsOverdue(false)
+    }
+  }, [task])
 
   const handleSave = () => {
     if (editedText.trim() === "") {
@@ -25,7 +44,6 @@ function Task({ task, categories, onComplete, onDelete, onEdit }) {
   }
 
   const handleCancel = () => {
- 
     setEditedText(task.text)
     setEditedCategory(task.category)
     setEditedDate(task.date || "")
@@ -39,8 +57,13 @@ function Task({ task, categories, onComplete, onDelete, onEdit }) {
     return date.toLocaleDateString()
   }
 
+  const getTaskStatusClass = () => {
+    if (isOverdue) return "task-overdue"
+    return ""
+  }
+
   return (
-    <div className="task">
+    <div className={`task ${getTaskStatusClass()}`}>
       {isEditing ? (
         <div className="task-edit-form">
           <input
@@ -52,7 +75,6 @@ function Task({ task, categories, onComplete, onDelete, onEdit }) {
 
           <div className="edit-row">
             <div className="edit-field">
-            
               <select value={editedCategory} onChange={(e) => setEditedCategory(e.target.value)}>
                 {categories?.map((cat) => (
                   <option key={cat} value={cat}>
@@ -63,12 +85,10 @@ function Task({ task, categories, onComplete, onDelete, onEdit }) {
             </div>
 
             <div className="edit-field">
-             
               <input type="date" value={editedDate} onChange={(e) => setEditedDate(e.target.value)} />
             </div>
 
             <div className="edit-field">
-             
               <input type="time" value={editedTime} onChange={(e) => setEditedTime(e.target.value)} />
             </div>
           </div>
@@ -85,21 +105,30 @@ function Task({ task, categories, onComplete, onDelete, onEdit }) {
       ) : (
         <>
           <div className="task-info">
-            <h3>{task.text}</h3>
+            <h3>
+              {task.text}
+              {isOverdue && (
+                <span className="overdue-indicator" title="This task is overdue">
+                  <AlertTriangle size={16} />
+                  Overdue
+                </span>
+              )}
+            </h3>
             <p>
               <span className="category-badge">{task.category}</span>
               {task.date && (
-                <span className="date-badge">
+                <span className={`date-badge ${isOverdue ? "overdue" : ""}`}>
                   <Calendar size={14} className="badge-icon" />
                   {formatDate(task.date)}
                 </span>
               )}
               {task.time && (
-                <span className="time-badge">
+                <span className={`time-badge ${isOverdue ? "overdue" : ""}`}>
                   <Clock size={14} className="badge-icon" />
                   {task.time}
                 </span>
               )}
+              <span className="status-badge">{isOverdue ? "Overdue" : "Active"}</span>
             </p>
           </div>
           <div className="task-actions">
