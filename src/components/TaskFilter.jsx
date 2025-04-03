@@ -1,10 +1,13 @@
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
+import { Filter, X } from "lucide-react"
 
 function TaskFilter({ categories, onFilterChange }) {
+  const [isOpen, setIsOpen] = useState(false)
   const [category, setCategory] = useState("All Categories")
   const [month, setMonth] = useState("")
   const [year, setYear] = useState("")
   const [status, setStatus] = useState("All")
+  const filterRef = useRef(null)
 
   const months = [
     { value: "", label: "All Months" },
@@ -31,50 +34,38 @@ function TaskFilter({ categories, onFilterChange }) {
     })),
   ]
 
+
   const statuses = [
     { value: "All", label: "All Tasks" },
-    { value: "Active", label: "Active" },
-    { value: "Overdue", label: "Overdue" },
+    { value: "Active", label: "Active Tasks" },
+    { value: "Overdue", label: "Overdue Tasks" },
   ]
 
-  const handleCategoryChange = (e) => {
-    setCategory(e.target.value)
-    onFilterChange({
-      category: e.target.value,
-      month: month,
-      year: year,
-      status: status,
-    })
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (filterRef.current && !filterRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [filterRef])
+
+  const toggleFilter = () => {
+    setIsOpen(!isOpen)
   }
 
-  const handleMonthChange = (e) => {
-    setMonth(e.target.value)
+  const applyFilters = () => {
     onFilterChange({
-      category: category,
-      month: e.target.value,
-      year: year,
-      status: status,
+      category,
+      month,
+      year,
+      status,
     })
-  }
-
-  const handleYearChange = (e) => {
-    setYear(e.target.value)
-    onFilterChange({
-      category: category,
-      month: month,
-      year: e.target.value,
-      status: status,
-    })
-  }
-
-  const handleStatusChange = (e) => {
-    setStatus(e.target.value)
-    onFilterChange({
-      category: category,
-      month: month,
-      year: year,
-      status: e.target.value,
-    })
+    setIsOpen(false)
   }
 
   const clearFilters = () => {
@@ -88,54 +79,88 @@ function TaskFilter({ categories, onFilterChange }) {
       year: "",
       status: "All",
     })
+    setIsOpen(false)
   }
 
+  const activeFilterCount = [category !== "All Categories", month !== "", year !== "", status !== "All"].filter(
+    Boolean,
+  ).length
+
   return (
-    <div className="filter-container">
-      <div className="filter-select">
-        <select value={category} onChange={handleCategoryChange}>
-          <option value="All Categories">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="filter-select">
-        <select value={status} onChange={handleStatusChange}>
-          {statuses.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="filter-select">
-        <select value={month} onChange={handleMonthChange}>
-          {months.map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="filter-select">
-        <select value={year} onChange={handleYearChange}>
-          {years.map((y) => (
-            <option key={y.value} value={y.value}>
-              {y.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <button className="btn btn-sm" onClick={clearFilters}>
-        Clear
+    <div className="filter-dropdown" ref={filterRef}>
+      <button
+        className={`filter-button ${activeFilterCount > 0 ? "has-filters" : ""}`}
+        onClick={toggleFilter}
+        title="Filter tasks"
+      >
+        <Filter size={20} />
+        {activeFilterCount > 0 && <span className="filter-badge">{activeFilterCount}</span>}
       </button>
+
+      {isOpen && (
+        <div className="filter-dropdown-content">
+          <div className="filter-dropdown-header">
+            <h3>Filter Tasks</h3>
+            <button className="close-button" onClick={() => setIsOpen(false)}>
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="filter-group">
+            <label>Category</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="All Categories">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              {statuses.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Month</label>
+            <select value={month} onChange={(e) => setMonth(e.target.value)}>
+              {months.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Year</label>
+            <select value={year} onChange={(e) => setYear(e.target.value)}>
+              {years.map((y) => (
+                <option key={y.value} value={y.value}>
+                  {y.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-actions">
+            <button className="btn btn-sm" onClick={applyFilters}>
+              Apply Filters
+            </button>
+            <button className="btn btn-sm btn-cancel" onClick={clearFilters}>
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
