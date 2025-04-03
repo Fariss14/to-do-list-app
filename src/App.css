@@ -473,6 +473,44 @@ body {
   border-left: 4px solid var(--danger-color);
 }
 
+/* Add these new styles for overdue tasks */
+.task-overdue {
+  background: rgba(255, 61, 0, 0.1);
+  border-left: 4px solid var(--danger-color);
+}
+
+.overdue-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 10px;
+  color: var(--danger-color);
+  font-size: 14px;
+  font-weight: normal;
+  background-color: rgba(255, 61, 0, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.date-badge.overdue,
+.time-badge.overdue {
+  background-color: rgba(255, 61, 0, 0.2);
+  color: #fff;
+}
+
+.status-badge {
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  background-color: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+}
+
+.task-overdue .status-badge {
+  background-color: rgba(255, 61, 0, 0.2);
+  color: var(--danger-color);
+}
+
 .empty-message {
   text-align: center;
   margin: 30px 0;
