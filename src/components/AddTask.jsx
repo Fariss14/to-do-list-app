@@ -9,6 +9,20 @@ function AddTask({ categories, onAddTask, onAddCategory }) {
   const [showCategoryInput, setShowCategoryInput] = useState(false)
   const [newCategory, setNewCategory] = useState("")
 
+  const setDefaultDate = () => {
+    const today = new Date()
+    const formattedDate = today.toISOString().split("T")[0]
+    setDate(formattedDate)
+  }
+
+  const setDefaultTime = () => {
+    const now = new Date()
+    now.setHours(now.getHours() + 1)
+    const hours = String(now.getHours()).padStart(2, "0")
+    const minutes = String(now.getMinutes()).padStart(2, "0")
+    setTime(`${hours}:${minutes}`)
+  }
+
   const onSubmit = (e) => {
     e.preventDefault()
 
@@ -19,7 +33,6 @@ function AddTask({ categories, onAddTask, onAddCategory }) {
 
     onAddTask({ text, category, date, time, completed: false })
 
-    // Reset form
     setText("")
     setDate("")
     setTime("")
@@ -89,6 +102,7 @@ function AddTask({ categories, onAddTask, onAddCategory }) {
               value={date}
               onChange={(e) => setDate(e.target.value)}
               className="enhanced-date-input"
+              onClick={() => !date && setDefaultDate()}
             />
           </div>
         </div>
@@ -103,6 +117,7 @@ function AddTask({ categories, onAddTask, onAddCategory }) {
               value={time}
               onChange={(e) => setTime(e.target.value)}
               className="enhanced-time-input"
+              onClick={() => !time && setDefaultTime()}
             />
           </div>
         </div>
@@ -114,4 +129,3 @@ function AddTask({ categories, onAddTask, onAddCategory }) {
 }
 
 export default AddTask
-
