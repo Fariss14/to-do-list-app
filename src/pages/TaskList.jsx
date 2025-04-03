@@ -11,18 +11,46 @@ function TaskList({ tasks, categories, onAddTask, onAddCategory, onComplete, onD
     category: "All Categories",
     month: "",
     year: "",
+    status: "All",
   })
 
-  useEffect(() => {
+  // Check if a task is overdue
+  const isTaskOverdue = (task) => {
+    if (!task.date) return false
 
+    const now = new Date()
+    const taskDateTime = new Date(task.date)
+
+    // If time is set, add it to the date
+    if (task.time) {
+      const [hours, minutes] = task.time.split(":").map(Number)
+      taskDateTime.setHours(hours, minutes)
+    } else {
+      // If no time set, default to end of day
+      taskDateTime.setHours(23, 59, 59)
+    }
+
+    return taskDateTime < now
+  }
+
+  useEffect(() => {
     let result = [...tasks]
 
-
+    // Filter by category
     if (filter.category !== "All Categories") {
       result = result.filter((task) => task.category === filter.category)
     }
 
+    // Filter by status
+    if (filter.status !== "All") {
+      if (filter.status === "Overdue") {
+        result = result.filter((task) => isTaskOverdue(task))
+      } else if (filter.status === "Active") {
+        result = result.filter((task) => !isTaskOverdue(task))
+      }
+    }
 
+    // Filter by month and year
     if (filter.month || filter.year) {
       result = result.filter((task) => {
         if (!task.date) return false
@@ -31,15 +59,15 @@ function TaskList({ tasks, categories, onAddTask, onAddCategory, onComplete, onD
         const taskMonth = String(taskDate.getMonth() + 1).padStart(2, "0")
         const taskYear = String(taskDate.getFullYear())
 
-    
+        // If both month and year are specified
         if (filter.month && filter.year) {
           return taskMonth === filter.month && taskYear === filter.year
         }
-  
+        // If only month is specified
         else if (filter.month) {
           return taskMonth === filter.month
         }
-  
+        // If only year is specified
         else if (filter.year) {
           return taskYear === filter.year
         }
@@ -60,14 +88,12 @@ function TaskList({ tasks, categories, onAddTask, onAddCategory, onComplete, onD
       <div className="task-container">
         <h2>My To Do List</h2>
 
-  
         <div className="add-task-container">
           <AddTask categories={categories} onAddTask={onAddTask} onAddCategory={onAddCategory} />
         </div>
 
         <div className="tasks-list-container">
           <div className="tasks-list-header">
-           
             <TaskFilter categories={categories} onFilterChange={handleFilterChange} />
           </div>
 
@@ -105,4 +131,3 @@ function TaskList({ tasks, categories, onAddTask, onAddCategory, onComplete, onD
 }
 
 export default TaskList
-
