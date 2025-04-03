@@ -31,11 +31,10 @@ function TaskFilter({ categories, onFilterChange }) {
     })),
   ]
 
-  // Status options
   const statuses = [
     { value: "All", label: "All Tasks" },
-    { value: "Active", label: "Active Tasks" },
-    { value: "Overdue", label: "Overdue Tasks" },
+    { value: "Active", label: "Active" },
+    { value: "Overdue", label: "Overdue" },
   ]
 
   const handleCategoryChange = (e) => {
@@ -135,7 +134,7 @@ function TaskFilter({ categories, onFilterChange }) {
       </div>
 
       <button className="btn btn-sm" onClick={clearFilters}>
-        Clear Filters
+        Clear
       </button>
     </div>
   )
