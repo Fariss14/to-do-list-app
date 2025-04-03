@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
-import Header from "./components/Header"
+import Sidebar from "./components/Sidebar"
 import TaskList from "./pages/TaskList"
 import CompletedTasks from "./pages/CompletedTasks"
 import DeletedTasks from "./pages/DeletedTasks"
@@ -76,30 +76,32 @@ function App() {
 
   return (
     <Router>
-      <div className="app-container">
-        <Header />
-        <div className="content-container">
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <TaskList
-                  tasks={tasks}
-                  categories={categories}
-                  onAddTask={addTask}
-                  onAddCategory={addCategory}
-                  onComplete={completeTask}
-                  onDelete={deleteTask}
-                  onEdit={editTask}
-                />
-              }
-            />
-            <Route
-              path="/completed"
-              element={<CompletedTasks tasks={completedTasks} onRestore={restoreCompletedTask} />}
-            />
-            <Route path="/deleted" element={<DeletedTasks tasks={deletedTasks} onRestore={restoreDeletedTask} />} />
-          </Routes>
+      <div className="app-layout">
+        <Sidebar />
+        <div className="main-content">
+          <div className="content-container">
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <TaskList
+                    tasks={tasks}
+                    categories={categories}
+                    onAddTask={addTask}
+                    onAddCategory={addCategory}
+                    onComplete={completeTask}
+                    onDelete={deleteTask}
+                    onEdit={editTask}
+                  />
+                }
+              />
+              <Route
+                path="/completed"
+                element={<CompletedTasks tasks={completedTasks} onRestore={restoreCompletedTask} />}
+              />
+              <Route path="/deleted" element={<DeletedTasks tasks={deletedTasks} onRestore={restoreDeletedTask} />} />
+            </Routes>
+          </div>
         </div>
       </div>
     </Router>
