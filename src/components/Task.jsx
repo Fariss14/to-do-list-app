@@ -1,153 +1,56 @@
-import { useState, useEffect } from "react"
-import { Edit2, Calendar, Clock, AlertTriangle } from "lucide-react"
-
-function Task({ task, categories, onComplete, onDelete, onEdit }) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedText, setEditedText] = useState(task.text)
-  const [editedCategory, setEditedCategory] = useState(task.category)
-  const [editedDate, setEditedDate] = useState(task.date || "")
-  const [editedTime, setEditedTime] = useState(task.time || "")
-  const [isOverdue, setIsOverdue] = useState(false)
-
-  useEffect(() => {
-    if (task.date) {
-      const now = new Date()
-      const taskDateTime = new Date(task.date)
-
-      if (task.time) {
-        const [hours, minutes] = task.time.split(":").map(Number)
-        taskDateTime.setHours(hours, minutes)
-      } else {
-        taskDateTime.setHours(23, 59, 59)
-      }
-
-      setIsOverdue(taskDateTime < now)
-    } else {
-      setIsOverdue(false)
-    }
-  }, [task])
-
-  const handleSave = () => {
-    if (editedText.trim() === "") {
-      alert("Task text cannot be empty")
-      return
-    }
-
-    onEdit(task.id, {
-      text: editedText,
-      category: editedCategory,
-      date: editedDate,
-      time: editedTime,
-    })
-
-    setIsEditing(false)
-  }
-
-  const handleCancel = () => {
-    setEditedText(task.text)
-    setEditedCategory(task.category)
-    setEditedDate(task.date || "")
-    setEditedTime(task.time || "")
-    setIsEditing(false)
-  }
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return ""
-    const date = new Date(dateStr)
-    return date.toLocaleDateString()
-  }
-
-  const getTaskStatusClass = () => {
-    if (isOverdue) return "task-overdue"
-    return ""
-  }
-
-  return (
-    <div className={`task ${getTaskStatusClass()}`}>
-      {isEditing ? (
-        <div className="task-edit-form">
-          <input
-            type="text"
-            value={editedText}
-            onChange={(e) => setEditedText(e.target.value)}
-            className="edit-task-input"
-          />
-
-          <div className="edit-row">
-            <div className="edit-field">
-              <select value={editedCategory} onChange={(e) => setEditedCategory(e.target.value)}>
-                {categories?.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="edit-field">
-              <input type="date" value={editedDate} onChange={(e) => setEditedDate(e.target.value)} />
-            </div>
-
-            <div className="edit-field">
-              <input type="time" value={editedTime} onChange={(e) => setEditedTime(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="edit-actions">
-            <button className="btn btn-sm btn-success" onClick={handleSave}>
-              <span>Save</span>
-            </button>
-            <button className="btn btn-sm btn-cancel" onClick={handleCancel}>
-              <span>Cancel</span>
-            </button>
-          </div>
+import { useState } from 'react';
+import { Check, CalendarDays, Flag, Pencil, Trash2, RotateCcw, ChevronDown, ChevronRight, Clock3 } from 'lucide-react';
+import { isOverdue, localDate } from '../lib/tasks';
+import { formatDate, categoryColor } from '../lib/presentation';
+export default function Task({
+  task,
+  now,
+  onComplete,
+  onDelete,
+  onEdit,
+  onRestore,
+  onPermanentDelete,
+  onSubtask
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const overdue = isOverdue(task, now);
+  const completed = task.status === 'completed';
+  const active = task.status === 'active';
+  const steps = task.subtasks.filter(s => s.completed).length;
+  return <article className={`task-card ${completed ? 'is-completed' : ''}`}>
+    <div className="task-main-row">
+      {active ? <button className="task-check" aria-label={`Complete ${task.text}`} onClick={() => onComplete(task)}>
+        <Check size={15} />
+      </button> : <span className={`status-symbol ${completed ? 'done' : 'trashed'}`}>{completed ? <Check size={16} /> : <Trash2 size={16} />}</span>}
+      <div className="task-content">
+        <h3>{task.text}</h3>
+        {task.notes && <p className="task-notes">{task.notes}</p>}
+        <div className="task-meta">
+          <span className={`category-pill color-${categoryColor(task.category)}`}>
+            <i />{task.category}</span>
+          <span className={`priority ${task.priority}`}>
+            <Flag size={12} />{task.priority}</span>
+          {task.date && <span className={overdue ? 'due overdue' : 'due'}>
+            <CalendarDays size={13} />{formatDate(task.date, now)}{task.time && ` · ${task.time}`}{overdue && ' · Overdue'}</span>}
+          {task.subtasks.length > 0 && <button className="steps-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}{steps}/{task.subtasks.length} steps</button>}
+          {completed && task.completedAt && <span className="due">
+            <Clock3 size={12} />Completed {formatDate(localDate(new Date(task.completedAt)), now)}</span>}
         </div>
-      ) : (
-        <>
-          <div className="task-info">
-            <h3>
-              {task.text}
-              {isOverdue && (
-                <span className="overdue-indicator" title="This task is overdue">
-                  <AlertTriangle size={16} />
-                  Overdue
-                </span>
-              )}
-            </h3>
-            <div className="task-metadata">
-              <span className="category-badge">{task.category}</span>
-
-              <div className="datetime-badges">
-                {task.date && (
-                  <span className={`date-badge ${isOverdue ? "overdue" : ""}`}>
-                    <Calendar size={14} className="badge-icon" />
-                    {formatDate(task.date)}
-                  </span>
-                )}
-                {task.time && (
-                  <span className={`time-badge ${isOverdue ? "overdue" : ""}`}>
-                    <Clock size={14} className="badge-icon" />
-                    {task.time}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="task-actions">
-            <button className="btn btn-edit" onClick={() => setIsEditing(true)} title="Edit task">
-              <Edit2 size={18} />
-            </button>
-            <button className="btn btn-success" onClick={() => onComplete(task.id)} title="Mark as completed">
-              Done
-            </button>
-            <button className="btn btn-danger" onClick={() => onDelete(task.id)} title="Delete task">
-              Delete
-            </button>
-          </div>
-        </>
-      )}
+      </div>
+      <div className="task-actions">{active ? <><button className="icon-button" onClick={() => onEdit(task)} aria-label={`Edit ${task.text}`} title="Edit task">
+          <Pencil size={16} />
+        </button><button className="icon-button delete-action" onClick={() => onDelete(task)} aria-label={`Move ${task.text} to trash`} title="Move to trash">
+          <Trash2 size={16} />
+        </button></> : <><button className="restore-button" onClick={() => onRestore(task)}>
+          <RotateCcw size={14} />
+          <span>Restore</span>
+        </button>{!completed && <button className="icon-button delete-action" onClick={() => onPermanentDelete(task)} aria-label={`Permanently delete ${task.text}`} title="Delete forever">
+          <Trash2 size={16} />
+        </button>}</>}</div>
     </div>
-  )
+    {expanded && <div className="subtask-list">{task.subtasks.map(s => <label className={s.completed ? 'subtask checked' : 'subtask'} key={s.id}>
+        <input type="checkbox" checked={s.completed} disabled={!active} onChange={() => onSubtask(task.id, s.id)} />
+        <span>{s.text}</span>
+      </label>)}</div>}
+  </article>;
 }
-
-export default Task
