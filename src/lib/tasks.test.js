@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { STORAGE_KEY, migrateLegacy, loadData, validateBackup, emptyData, localDate, validDate, isOverdue, transitionTask, toggleSubtask, selectTasks, getStats } from './tasks.js';
+import { STORAGE_KEY, migrateLegacy, loadData, validateBackup, emptyData, localDate, validDate, isOverdue, transitionTask, toggleSubtask, selectTasks, getStats, updateSubtask, countSubtasks } from './tasks.js';
 const now = new Date(2026, 10, 11, 12, 0);
 const makeTask = (extra = {}) => ({
   id: '1',
@@ -321,4 +321,81 @@ test('replaces blank legacy IDs with valid unique identities', () => {
   const data = migrateLegacy({ tasks: [{ id: '', text: 'Empty ID' }, { id: ' ', text: 'Space ID' }] });
   assert.equal(new Set(data.tasks.map(task => task.id)).size, 2);
   assert.doesNotThrow(() => validateBackup(data));
+});
+
+test('workflow stages remain open in date views, counts, and overdue checks', () => {
+  const tasks = ['active', 'in-progress', 'for-revision', 'completed', 'deleted'].map(status => makeTask({ id: status, status, time: '10:00' }));
+  assert.equal(selectTasks(tasks, {}, now).length, 3);
+  assert.equal(selectTasks(tasks, { view: 'today' }, now).length, 3);
+  for (const task of tasks) {
+    assert.deepEqual(selectTasks(tasks, { view: task.status }, now).map(t => t.id), [task.id]);
+    assert.equal(isOverdue(task, now), !['completed', 'deleted'].includes(task.status));
+  }
+  assert.equal(getStats(tasks, now).active, 3);
+  assert.equal(getStats(tasks, now).dueToday, 3);
+  assert.equal(getStats(tasks, now).overdue, 3);
+  assert.equal(selectTasks(tasks.map(t => ({ ...t, date: '2026-11-12' })), { view: 'upcoming' }, now).length, 3);
+});
+
+test('all workflow statuses survive storage and backup round trips', () => {
+  const data = backup(['active', 'in-progress', 'completed', 'for-revision'].map(status => makeTask({ id: status, status })));
+  const saved = JSON.stringify(data);
+  assert.deepEqual(validateBackup(JSON.parse(saved)), data);
+  assert.deepEqual(loadData(storage({ [STORAGE_KEY]: saved })).data, data);
+});
+
+test('completed tasks can return for revision and receive a new completion timestamp', () => {
+  const done = transitionTask(makeTask(), 'completed', now);
+  const later = new Date(now.getTime() + 60000);
+  assert.equal(transitionTask(done, 'completed', later).completedAt, done.completedAt);
+  const revision = transitionTask(done, 'for-revision', later);
+  assert.equal(revision.completedAt, null);
+  const working = transitionTask(revision, 'in-progress', later);
+  assert.equal(working.completedAt, null);
+  assert.equal(transitionTask(working, 'completed', later).completedAt, later.toISOString());
+  assert.equal(transitionTask(working, 'deleted', later).status, 'deleted');
+});
+
+const nestedTask = () => makeTask({ subtasks: [
+  { id: 'parent', text: 'Plan', completed: false, subtasks: [
+    { id: 'child', text: 'Research', completed: false, subtasks: [
+      { id: 'grandchild', text: 'Read notes', completed: true }
+    ] }
+  ] },
+  { id: 'sibling', text: 'Review', completed: false }
+] });
+
+test('nested subtasks survive backup export, import, and browser reload', () => {
+  const data = backup([nestedTask()]);
+  const saved = JSON.stringify(data);
+  assert.deepEqual(validateBackup(JSON.parse(saved)), data);
+  assert.deepEqual(loadData(storage({ [STORAGE_KEY]: saved })).data, data);
+});
+
+test('nested completion changes only the selected step and counts every level', () => {
+  const original = nestedTask();
+  const updated = toggleSubtask(original, 'child');
+  assert.equal(updated.subtasks[0].subtasks[0].completed, true);
+  assert.equal(updated.subtasks[0].completed, false);
+  assert.equal(original.subtasks[0].subtasks[0].completed, false);
+  assert.deepEqual(countSubtasks(updated.subtasks), { total: 4, completed: 2 });
+  assert.equal(updated.status, original.status);
+});
+
+test('adding and removing nested branches preserves unrelated steps', () => {
+  const task = nestedTask();
+  const added = updateSubtask(task.subtasks, 'child', sub => ({ ...sub, subtasks: [...sub.subtasks, { id: 'new', text: 'New step', completed: false }] }));
+  assert.equal(countSubtasks(added).total, 5);
+  const removed = updateSubtask(added, 'child', () => null);
+  assert.deepEqual(countSubtasks(removed), { total: 2, completed: 0 });
+  assert.deepEqual(removed[1], task.subtasks[1]);
+  assert.equal(countSubtasks(task.subtasks).total, 4);
+});
+
+test('rejects invalid nested backups and duplicate IDs across branches', () => {
+  for (const invalid of [null, {}, 'broken', [{ id: 'parent', text: 'Duplicate', completed: false }], [{ id: 'bad', text: 'Invalid', completed: 'yes' }]]) {
+    const task = nestedTask();
+    task.subtasks[0].subtasks = invalid;
+    assert.throws(() => validateBackup(backup([task])));
+  }
 });

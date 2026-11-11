@@ -22,9 +22,11 @@ npm run preview  # Preview the production bundle locally
 
 ## Features
 
-- All Tasks, Today (including older overdue tasks), Upcoming, Completed, and Trash.
+- All Tasks, Today (including older overdue tasks), Upcoming, and Trash, plus dedicated Task, In Progress, Completed, and For Revision views.
+- Choose a workflow status when creating or editing a task, or change it directly on its card. Existing active tasks appear under Task. In Progress and For Revision remain included in open-task counts and due-date views.
 - Search task titles and notes. Combine category, priority, and due-date filters with sorting by due date, priority, newest, or title.
 - Task notes, optional local due dates/times, three priority levels, custom categories, and independently checked subtasks.
+- Add subtasks directly on a task card or in the editor, then use Add subtask beneath any step to nest further steps. Each checkbox is independent; progress includes all levels. Remove a step and its descendants in the editor. Nested steps are preserved in browser storage and JSON backups, and older flat-subtask backups still work.
 - Completion and deletion with an eight-second Undo notification. Restore archived tasks at any time. Permanent deletion from Trash requires confirmation.
 - Daily counts and progress: tasks completed today divided by tasks completed today plus active tasks due today. Historical completions without a timestamp are excluded.
 - Light/dark themes, system preference on first use, mobile navigation, keyboard focus styles, accessible forms, and reduced-motion support.

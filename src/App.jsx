@@ -5,7 +5,7 @@ import Task from './components/Task';
 import { formatDate, categoryColor } from './lib/presentation';
 import TaskEditor from './components/TaskEditor';
 import Dialog from './components/Dialog';
-import { STORAGE_KEY, loadData, validateBackup, uid, localDate, transitionTask, toggleSubtask, selectTasks, getStats, emptyData } from './lib/tasks';
+import { STORAGE_KEY, loadData, validateBackup, uid, localDate, transitionTask, selectTasks, getStats, emptyData, isOpenTask, TASK_STATUSES } from './lib/tasks';
 import './App.css';
 const navigation = [{
   path: '/',
@@ -23,10 +23,25 @@ const navigation = [{
   label: 'Upcoming',
   icon: CalendarRange
 }, {
+  path: '/tasks',
+  view: 'active',
+  label: 'Task',
+  icon: Circle
+}, {
+  path: '/in-progress',
+  view: 'in-progress',
+  label: 'In Progress',
+  icon: Clock3
+}, {
   path: '/completed',
   view: 'completed',
   label: 'Completed',
   icon: CircleCheck
+}, {
+  path: '/for-revision',
+  view: 'for-revision',
+  label: 'For Revision',
+  icon: RotateCcw
 }, {
   path: '/deleted',
   view: 'deleted',
@@ -37,6 +52,9 @@ const titles = {
   all: ['Big plans.\nSmall steps.', 'A home for your ideas, your errands, and your next big thing.'],
   today: ['Today has\npotential.', 'Pick your next move. Make a little room for progress.'],
   upcoming: ['Good things\nahead.', 'Meet your future plans. Give them a little head start.'],
+  active: ['Ready to\nget started.', 'Choose a task and take your first small step.'],
+  'in-progress': ['Keep things\nmoving.', 'Your work is underway. Make a little more progress.'],
+  'for-revision': ['A fresh\nperspective.', 'Revisit, refine, and give your work another look.'],
   completed: ['Look at\nyou go.', 'A collection of small wins. You made these happen.'],
   deleted: ['Room for\na rethink.', 'Bring a task back or make space for something new.']
 };
@@ -150,13 +168,13 @@ export function Workspace() {
     return () => clearTimeout(timer);
   }, [toast]);
   function saveTask(draft) {
-    const task = editor.task ? draft : {
+    const saved = editor.task ? draft : {
       ...draft,
       id: uid(),
-      status: 'active',
       createdAt: new Date().toISOString(),
       completedAt: null
     };
+    const task = transitionTask({ ...saved, status: editor.task?.status }, draft.status);
     setData(current => ({
       ...current,
       categories: current.categories.includes(task.category) ? current.categories : [...current.categories, task.category],
@@ -174,7 +192,7 @@ export function Workspace() {
       tasks: d.tasks.map(t => t.id === task.id ? updated : t)
     }));
     setToast({
-      message: status === 'completed' ? 'Nice work. Task completed!' : status === 'deleted' ? 'Task moved to trash.' : 'Task restored to All tasks.',
+      message: status === 'completed' ? 'Nice work. Task completed!' : status === 'deleted' ? 'Task moved to trash.' : `Status changed to ${TASK_STATUSES.find(s => s.value === status).label}.`,
       before: task,
       status
     });
@@ -309,7 +327,7 @@ export function Workspace() {
       </div>
       <div className="category-nav">{data.categories.map(c => <Link to="/" className={`category-link ${filters.category === c ? 'selected' : ''}`} key={c} onClick={() => selectCategory(c)}>
           <span className={`category-dot color-${categoryColor(c)}`} />{c}
-          <span className="category-count">{data.tasks.filter(t => t.status === 'active' && t.category === c).length}</span>
+          <span className="category-count">{data.tasks.filter(t => isOpenTask(t) && t.category === c).length}</span>
         </Link>)}</div>
       <div className="sidebar-bottom">
         <div className="local-note">
@@ -538,14 +556,14 @@ export function Workspace() {
           </div>}
           <div className="task-list" aria-live="polite">{visible.length ? groups.filter(g => g.tasks.length).map(group => <div key={group.title}>{group.title && <h3 className="group-title">{group.title}
                 <span>{group.tasks.length}</span>
-              </h3>}{group.tasks.map(task => <Task key={task.id} task={task} now={now} onComplete={t => changeStatus(t, 'completed')} onDelete={t => changeStatus(t, 'deleted')} onRestore={t => changeStatus(t, 'active')} onEdit={t => setEditor({
+              </h3>}{group.tasks.map(task => <Task key={task.id} task={task} now={now} onStatusChange={changeStatus} onComplete={t => changeStatus(t, 'completed')} onDelete={t => changeStatus(t, 'deleted')} onRestore={t => changeStatus(t, 'active')} onEdit={t => setEditor({
                 task: t
               })} onPermanentDelete={t => setConfirmation({
                 type: 'delete',
                 task: t
-              })} onSubtask={(id, subId) => setData(d => ({
+              })} onSubtasksChange={(id, subtasks) => setData(d => ({
                 ...d,
-                tasks: d.tasks.map(t => t.id === id ? toggleSubtask(t, subId) : t)
+                tasks: d.tasks.map(t => t.id === id ? ({ ...t, subtasks }) : t)
               }))} />)}</div>) : <div className="empty-state">
               <span className="empty-icon">{filters.search || activeFilters ? <Search size={26} /> : view === 'completed' ? <CircleCheck size={28} /> : view === 'deleted' ? <Trash2 size={27} /> : <Circle size={28} />}</span>
               <h3>{filters.search || activeFilters ? 'No tasks match just yet.' : view === 'completed' ? 'Your next little win is waiting.' : view === 'deleted' ? 'Nothing in the trash.' : view === 'today' ? 'A little breathing room.' : view === 'upcoming' ? 'A clear horizon.' : 'Big things start with a small task.'}</h3>
@@ -566,10 +584,10 @@ export function Workspace() {
       </main>
     </div>
     <input ref={importRef} hidden type="file" accept="application/json,.json" aria-label="Import JSON backup" onChange={readImport} />
-    {editor && <TaskEditor task={editor.task} categories={data.categories} defaultDate={view === 'today' ? localDate(now) : ''} onSave={saveTask} onClose={() => setEditor(null)} />}
+    {editor && <TaskEditor task={editor.task} categories={data.categories} defaultStatus={TASK_STATUSES.some(s => s.value === view) ? view : 'active'} defaultDate={view === 'today' ? localDate(now) : ''} onSave={saveTask} onClose={() => setEditor(null)} />}
     {pendingImport && <Dialog title="Bring your tasks back." onClose={() => setPendingImport(null)}>
       <p className="dialog-copy">This backup contains{' '}
-        <strong>{pendingImport.tasks.length} tasks</strong> ({pendingImport.tasks.filter(t => t.status === 'active').length} active, {pendingImport.tasks.filter(t => t.status === 'completed').length} completed, {pendingImport.tasks.filter(t => t.status === 'deleted').length} in trash) and{' '}
+        <strong>{pendingImport.tasks.length} tasks</strong> ({TASK_STATUSES.map(s => `${pendingImport.tasks.filter(t => t.status === s.value).length} ${s.label}`).join(', ')}, {pendingImport.tasks.filter(t => t.status === 'deleted').length} in trash) and{' '}
         <strong>{pendingImport.categories.length} categories</strong>.</p>
       <p className="dialog-copy">Importing replaces all current tasks and categories. Export your current data first if you want to keep it.</p>
       <div className="dialog-actions">

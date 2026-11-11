@@ -210,6 +210,10 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .9; }
 .task-content h3 { font-size: 14px; line-height: 1.65; font-weight: 600; overflow-wrap: anywhere; }
 .task-notes { margin-top: 5px; max-height: 6em; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.7; color: var(--muted); }
 .task-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 11px; margin-top: 12px; }
+.task-status { max-width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 11px; cursor: pointer; }
+.task-status.status-in-progress { border-color: #728db7; }
+.task-status.status-completed { border-color: #6e9959; }
+.task-status.status-for-revision { border-color: #c28a57; }
 .category-pill { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 4px 8px; border-radius: 5px; background: var(--category-bg); color: var(--category); font-size: 10px; font-weight: 600; overflow-wrap: anywhere; }
 .category-pill i { width: 4px; height: 4px; background: var(--category); border-radius: 50%; flex-shrink: 0; }
 .priority { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; text-transform: capitalize; }
@@ -233,6 +237,17 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .9; }
 .subtask { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 12px; color: var(--subtle); overflow-wrap: anywhere; }
 .subtask input { width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; }
 .subtask.checked span { text-decoration: line-through; color: var(--muted); }
+.subtask-tree { min-width: 0; }
+.subtask-branches { list-style: none; padding: 0; margin: 0; }
+.subtask-tree-row { display: flex; align-items: center; gap: 6px; }
+.subtask-tree-row .subtask { flex: 1; min-width: 0; }
+.task-form .subtask-tree-row .subtask { display: flex; font-weight: 400; }
+.subtask-children { margin: 3px 0 10px 8px; padding-left: 8px; border-left: 1px solid var(--border); }
+.subtask-add { display: inline-flex; align-items: center; gap: 4px; padding: 6px 3px; background: transparent; color: var(--subtle); font-size: 11px; white-space: nowrap; }
+.subtask-add:hover { color: var(--text); text-decoration: underline; }
+.subtask-add-input { margin: 5px 0; min-width: 0; }
+.subtask-add-input input { width: 100%; min-width: 0; padding: 9px 6px; border: 0; background: transparent; font-size: 12px; }
+.subtask-add-input .icon-button { flex-shrink: 0; }
 .group-title { display: flex; align-items: center; gap: 8px; margin: 7px 0 2px; font-family: var(--display); font-size: 13px; font-weight: 600; }
 .group-title span { font-family: 'DM Sans', sans-serif; font-size: 10px; color: var(--muted); }
 .add-task-row { width: 100%; display: flex; align-items: center; gap: 9px; margin-top: 13px; padding: 16px; border: 1px dashed var(--border); border-radius: 10px; background: var(--bg); color: var(--subtle); font-size: 12px; }

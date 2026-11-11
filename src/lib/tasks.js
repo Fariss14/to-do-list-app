@@ -1,6 +1,13 @@
 export const STORAGE_KEY = 'pransxzy.tasks.v1';
 export const DEFAULT_CATEGORIES = ['Personal', 'Hobby', 'Work', 'Acads', 'Shopping'];
-export const STATUSES = ['active', 'completed', 'deleted'];
+export const TASK_STATUSES = [
+  { value: 'active', label: 'Task' },
+  { value: 'in-progress', label: 'In Progress' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'for-revision', label: 'For Revision' }
+];
+export const STATUSES = [...TASK_STATUSES.map(s => s.value), 'deleted'];
+export const isOpenTask = task => ['active', 'in-progress', 'for-revision'].includes(task.status);
 export const PRIORITIES = ['low', 'medium', 'high'];
 export const uid = () => globalThis.crypto.randomUUID();
 export const localDate = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -12,6 +19,22 @@ export const emptyData = () => ({
   tasks: [],
   categories: [...DEFAULT_CATEGORIES]
 });
+function validateSubtasks(subtasks, ids = new Set()) {
+  if (!Array.isArray(subtasks)) throw new Error('The backup contains invalid subtasks.');
+  for (const sub of subtasks) {
+    if (!sub || typeof sub.id !== 'string' || !sub.id || ids.has(sub.id) || typeof sub.text !== 'string' || !sub.text.trim() || typeof sub.completed !== 'boolean') throw new Error('The backup contains an invalid subtask.');
+    ids.add(sub.id);
+    if (sub.subtasks !== undefined) validateSubtasks(sub.subtasks, ids);
+  }
+}
+function copySubtasks(subtasks) {
+  return subtasks.map(s => ({
+    id: s.id,
+    text: s.text.trim(),
+    completed: s.completed,
+    ...(s.subtasks !== undefined ? { subtasks: copySubtasks(s.subtasks) } : {})
+  }));
+}
 export function validateBackup(data) {
   if (!data || data.version !== 1 || !Array.isArray(data.tasks) || !Array.isArray(data.categories)) throw new Error('Choose a version 1 Todolio JSON backup.');
   if (!data.categories.length || data.categories.some(c => typeof c !== 'string' || !c.trim() || c !== c.trim()) || new Set(data.categories.map(c => c.toLowerCase())).size !== data.categories.length) throw new Error('The backup has invalid or duplicate categories.');
@@ -19,11 +42,7 @@ export function validateBackup(data) {
   for (const task of data.tasks) {
     if (!task || typeof task.id !== 'string' || !task.id || ids.has(task.id) || typeof task.text !== 'string' || !task.text.trim() || typeof task.notes !== 'string' || !data.categories.includes(task.category) || !STATUSES.includes(task.status) || !PRIORITIES.includes(task.priority) || task.date !== '' && !validDate(task.date) || task.time !== '' && !validTime(task.time) || task.time && !task.date || !validStamp(task.createdAt) || !validStamp(task.completedAt) || !Array.isArray(task.subtasks)) throw new Error('The backup contains an invalid task. No data has been changed.');
     ids.add(task.id);
-    const subIds = new Set();
-    for (const sub of task.subtasks) {
-      if (!sub || typeof sub.id !== 'string' || !sub.id || subIds.has(sub.id) || typeof sub.text !== 'string' || !sub.text.trim() || typeof sub.completed !== 'boolean') throw new Error('The backup contains an invalid subtask.');
-      subIds.add(sub.id);
-    }
+    validateSubtasks(task.subtasks);
   }
   // Select known fields so imported files cannot introduce unrelated state.
   return {
@@ -40,11 +59,7 @@ export function validateBackup(data) {
       notes: t.notes,
       createdAt: t.createdAt,
       completedAt: t.completedAt,
-      subtasks: t.subtasks.map(s => ({
-        id: s.id,
-        text: s.text.trim(),
-        completed: s.completed
-      }))
+      subtasks: copySubtasks(t.subtasks)
     }))
   };
 }
@@ -114,7 +129,7 @@ export function loadData(storage) {
   }
 }
 export function isOverdue(task, now = new Date()) {
-  if (task.status !== 'active' || !task.date) return false;
+  if (!isOpenTask(task) || !task.date) return false;
   const due = new Date(`${task.date}T${task.time || '23:59:59.999'}`);
   return due < now;
 }
@@ -123,17 +138,29 @@ export function transitionTask(task, status, now = new Date()) {
   return {
     ...task,
     status,
-    completedAt: status === 'completed' ? now.toISOString() : null
+    completedAt: status === 'completed' ? task.status === 'completed' ? task.completedAt : now.toISOString() : null
   };
 }
 export function toggleSubtask(task, id) {
   return {
     ...task,
-    subtasks: task.subtasks.map(s => s.id === id ? {
-      ...s,
-      completed: !s.completed
-    } : s)
+    subtasks: updateSubtask(task.subtasks, id, s => ({ ...s, completed: !s.completed }))
   };
+}
+export function updateSubtask(subtasks, id, update) {
+  return subtasks.flatMap(s => {
+    if (s.id === id) {
+      const updated = update(s);
+      return updated ? [updated] : [];
+    }
+    return [{ ...s, ...(s.subtasks ? { subtasks: updateSubtask(s.subtasks, id, update) } : {}) }];
+  });
+}
+export function countSubtasks(subtasks) {
+  return subtasks.reduce((total, sub) => {
+    const children = countSubtasks(sub.subtasks || []);
+    return { total: total.total + 1 + children.total, completed: total.completed + Number(sub.completed) + children.completed };
+  }, { total: 0, completed: 0 });
 }
 export function selectTasks(tasks, {
   view = 'all',
@@ -151,7 +178,7 @@ export function selectTasks(tasks, {
     low: 2
   };
   return tasks.filter(t => {
-    const inView = view === 'completed' ? t.status === 'completed' : view === 'deleted' ? t.status === 'deleted' : t.status === 'active' && (view === 'today' ? t.date && t.date <= today : view === 'upcoming' ? t.date > today : true);
+    const inView = STATUSES.includes(view) ? t.status === view : isOpenTask(t) && (view === 'today' ? t.date && t.date <= today : view === 'upcoming' ? t.date > today : true);
     return inView && (!query || `${t.text} ${t.notes}`.toLowerCase().includes(query)) && (!category || t.category === category) && (!priority || t.priority === priority) && (!due || (due === 'overdue' ? isOverdue(t, now) : due === 'today' ? t.date === today : due === 'undated' ? !t.date : t.date > today));
   }).sort((a, b) => {
     if (sort === 'title') return a.text.localeCompare(b.text) || a.id.localeCompare(b.id);
@@ -162,7 +189,7 @@ export function selectTasks(tasks, {
 }
 export function getStats(tasks, now = new Date()) {
   const today = localDate(now);
-  const active = tasks.filter(t => t.status === 'active');
+  const active = tasks.filter(isOpenTask);
   const dueToday = active.filter(t => t.date === today).length;
   const completedToday = tasks.filter(t => t.status === 'completed' && t.completedAt && localDate(new Date(t.completedAt)) === today).length;
   return {

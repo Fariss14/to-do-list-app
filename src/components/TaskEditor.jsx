@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Plus, Trash2, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import Dialog from './Dialog';
-import { uid, validDate } from '../lib/tasks';
+import Subtasks from './Subtasks';
+import { uid, validDate, TASK_STATUSES, updateSubtask } from '../lib/tasks';
 export default function TaskEditor({
   task,
   categories,
   onSave,
   onClose,
-  defaultDate = ''
+  defaultDate = '',
+  defaultStatus = 'active'
 }) {
   const [draft, setDraft] = useState(() => task ? {
     ...task,
@@ -21,25 +23,16 @@ export default function TaskEditor({
     date: defaultDate,
     time: '',
     priority: 'medium',
+    status: defaultStatus,
     subtasks: []
   });
   const [newCategory, setNewCategory] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
-  const [subtask, setSubtask] = useState('');
   const [error, setError] = useState('');
   const update = (key, value) => setDraft(d => ({
     ...d,
     [key]: value
   }));
-  function addSubtask() {
-    if (!subtask.trim()) return;
-    update('subtasks', [...draft.subtasks, {
-      id: uid(),
-      text: subtask.trim(),
-      completed: false
-    }]);
-    setSubtask('');
-  }
   function save(e) {
     e.preventDefault();
     if (!draft.text.trim()) return setError('Give your task a title.');
@@ -47,11 +40,13 @@ export default function TaskEditor({
     if (addingCategory && !newCategory.trim()) return setError('Enter a category name or choose an existing one.');
     const requested = newCategory.trim();
     const category = addingCategory ? categories.find(c => c.toLowerCase() === requested.toLowerCase()) || requested : draft.category;
-    const subtasks = subtask.trim() ? [...draft.subtasks, {
-      id: uid(),
-      text: subtask.trim(),
-      completed: false
-    }] : draft.subtasks;
+    let subtasks = draft.subtasks;
+    for (const [name, value] of new FormData(e.currentTarget)) {
+      if (!name.startsWith('new-subtask:') || !value.trim()) continue;
+      const sub = { id: uid(), text: value.trim(), completed: false, subtasks: [] };
+      const parentId = name.slice('new-subtask:'.length);
+      subtasks = parentId ? updateSubtask(subtasks, parentId, parent => ({ ...parent, subtasks: [...(parent.subtasks || []), sub] })) : [...subtasks, sub];
+    }
     onSave({
       ...draft,
       text: draft.text.trim(),
@@ -68,6 +63,11 @@ export default function TaskEditor({
       <label>Notes{' '}
         <span className="optional">optional</span>
         <textarea rows={3} placeholder="A little context, a link, or your next step…" value={draft.notes} onChange={e => update('notes', e.target.value)} />
+      </label>
+      <label>Status
+        <select value={draft.status} onChange={e => update('status', e.target.value)}>
+          {TASK_STATUSES.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
+        </select>
       </label>
       <div className="form-grid">
         <label>Category
@@ -108,27 +108,7 @@ export default function TaskEditor({
         <legend>Small steps{' '}
           <span className="optional">optional</span>
         </legend>
-        {draft.subtasks.map(s => <div className="subtask-edit-row" key={s.id}>
-          <input aria-label={`Complete ${s.text}`} type="checkbox" checked={s.completed} onChange={() => update('subtasks', draft.subtasks.map(item => item.id === s.id ? {
-            ...item,
-            completed: !item.completed
-          } : item))} />
-          <span>{s.text}</span>
-          <button type="button" className="icon-button" aria-label={`Remove ${s.text}`} onClick={() => update('subtasks', draft.subtasks.filter(item => item.id !== s.id))}>
-            <Trash2 size={16} />
-          </button>
-        </div>)}
-        <div className="inline-input">
-          <input value={subtask} placeholder="Break it into a smaller step" aria-label="New subtask" onChange={e => setSubtask(e.target.value)} onKeyDown={e => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              addSubtask();
-            }
-          }} />
-          <button type="button" className="icon-button" aria-label="Add subtask" onClick={addSubtask}>
-            <Plus size={19} />
-          </button>
-        </div>
+        <Subtasks subtasks={draft.subtasks} parentText={draft.text || 'this task'} removable onChange={subtasks => update('subtasks', subtasks)} />
       </fieldset>
       {error && <p id="task-form-error" role="alert" className="form-error">{error}</p>}
       <div className="dialog-actions">
